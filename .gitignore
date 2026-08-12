@@ -1,0 +1,69 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.pyo
+*.pyd
+*.pyc
+*.pym
+python-env/
+venv/
+ENV/
+.env
+.env.*
+
+# Django
+BackEnd/**/*.sqlite3
+BackEnd/**/migrations/*.py[cod]
+BackEnd/**/__pycache__/
+BackEnd/**/local_settings.py
+BackEnd/db.sqlite3
+
+# Node / Frontend
+FrontEnd/node_modules/
+FrontEnd/dist/
+FrontEnd/build/
+FrontEnd/.vite/
+FrontEnd/*.local
+FrontEnd/.env
+FrontEnd/.env.*
+
+# General
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+*.cover
+coverage.*
+*.cache
+*.tmp
+*.temp
+
+direnv/
+
+# macOS
+*.DS_Store
+
+# Git
+*.orig
+
+# Editor directories and files
+*.sublime-workspace
+*.sublime-project
+
+# Byte-compiled / C extensions
+*.so
+
+# Temporary files
+*.swp
+*.swo
+*.tmp
+*.bak
