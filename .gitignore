@@ -67,3 +67,6 @@ direnv/
 *.swo
 *.tmp
 *.bak
+
+#Confidentials Data
+Agent/src/agent/confidentials.yml
