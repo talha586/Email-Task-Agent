@@ -1,0 +1,20 @@
+[project]
+name = "email-task-agent"
+version = "0.1.0"
+description = "Email-to-task agent monorepo"
+requires-python = ">=3.12"
+dependencies = [
+    "agent",
+    "django>=4.2,<5.0",
+    "djangorestframework>=3.14",
+    "beautifulsoup4>=4.15.0",
+    "pyyaml>=6.0.3",
+    "python-dotenv>=1.2.2",
+    "groq>=1.6.0",
+]
+
+[tool.uv.workspace]
+members = ["Agent"]
+
+[tool.uv.sources]
+agent = { workspace = true }
