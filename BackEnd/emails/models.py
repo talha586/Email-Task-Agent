@@ -5,6 +5,8 @@ class FetchedEmail(models.Model):
     """A single email pulled from the inbox by gmail_fetcher.py."""
 
     message_id = models.CharField(max_length=255, blank=True, null=True)
+    in_reply_to = models.CharField(max_length=255, blank=True, null=True)
+    references = models.TextField(blank=True, null=True)  # space-separated list of Message-IDs
     subject = models.CharField(max_length=500, blank=True)
     sender = models.CharField(max_length=255, blank=True)
     date = models.CharField(max_length=255, blank=True)  # raw Date header as fetched

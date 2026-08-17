@@ -28,9 +28,10 @@ DEFAULT_FETCH_LIMIT = 10
 def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
     """Log into Gmail via IMAP and return the most recent matching messages.
 
-    Returns a list of {"subject", "from", "date", "body"} dicts. Returns an
-    empty list (rather than raising) on fetch failure, so callers can decide
-    how to surface that to the frontend.
+    Returns a list of {"message_id", "in_reply_to", "references", "subject",
+    "from", "date", "body"} dicts. Returns an empty list (rather than
+    raising) on fetch failure, so callers can decide how to surface that to
+    the frontend.
     """
     username = getattr(settings, "GMAIL_USER", None)
     password = getattr(settings, "GMAIL_APP_PASSWORD", None)
@@ -73,6 +74,8 @@ def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
             results.append(
                 {
                     "message_id": msg.get("Message-ID", ""),
+                    "in_reply_to": msg.get("In-Reply-To", ""),
+                    "references": msg.get("References", ""),
                     "subject": msg.get("Subject", ""),
                     "from": msg.get("From", ""),
                     "date": msg.get("Date", ""),
