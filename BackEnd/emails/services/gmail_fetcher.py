@@ -72,6 +72,7 @@ def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
             msg = email.message_from_bytes(raw)
             results.append(
                 {
+                    "message_id": msg.get("Message-ID", ""),
                     "subject": msg.get("Subject", ""),
                     "from": msg.get("From", ""),
                     "date": msg.get("Date", ""),
