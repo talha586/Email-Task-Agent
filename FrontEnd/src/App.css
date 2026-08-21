@@ -44,6 +44,8 @@ body {
   flex-direction: column;
 }
 
+/* ---- Scan bar / header ---- */
+
 .scan-bar {
   display: flex;
   flex-wrap: wrap;
@@ -130,6 +132,8 @@ body {
   text-align: right;
 }
 
+/* ---- Main / grid ---- */
+
 .main {
   flex: 1;
   padding: 40px clamp(20px, 5vw, 64px) 64px;
@@ -145,6 +149,8 @@ body {
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 20px;
 }
+
+/* ---- Card ---- */
 
 .card {
   background: var(--paper);
@@ -244,6 +250,8 @@ body {
   outline-offset: 2px;
 }
 
+/* ---- Priority stamp ---- */
+
 .stamp {
   font-family: var(--font-mono);
   font-size: 10px;
@@ -271,6 +279,8 @@ body {
   background: var(--sort-green-dim);
 }
 
+/* ---- Confidence ---- */
+
 .confidence {
   position: relative;
   width: 84px;
@@ -295,6 +305,8 @@ body {
   font-size: 10px;
   color: #8a7f68;
 }
+
+/* ---- Editing state ---- */
 
 .card--editing {
   border-top-style: solid;
@@ -378,6 +390,8 @@ body {
   outline-offset: 2px;
 }
 
+/* ---- Empty state ---- */
+
 .empty {
   display: flex;
   flex-direction: column;
@@ -406,12 +420,16 @@ body {
   max-width: 320px;
 }
 
+/* ---- Reduced motion ---- */
+
 @media (prefers-reduced-motion: reduce) {
   * {
     animation: none !important;
     transition: none !important;
   }
 }
+
+/* ---- Mobile ---- */
 
 @media (max-width: 560px) {
   .scan-bar {
@@ -426,4 +444,58 @@ body {
   .scan-bar__error {
     text-align: left;
   }
+}
+
+/* ---- Login gate ---- */
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--paper);
+  color: var(--ink-text);
+  border-radius: 4px;
+  padding: 32px 28px;
+  border-top: 3px dashed var(--kraft);
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.2),
+    0 8px 20px -12px rgba(0, 0, 0, 0.5);
+}
+
+.login-card__title {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 400;
+}
+
+.login-card .btn--primary {
+  margin-top: 6px;
+}
+
+.logout-link {
+  position: fixed;
+  bottom: 16px;
+  right: 16px;
+  background: transparent;
+  border: none;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.logout-link:hover {
+  color: var(--paper-text);
 }

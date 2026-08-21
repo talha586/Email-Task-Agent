@@ -1,10 +1,19 @@
 import { useCallback, useEffect, useState } from "react";
 import ScanBar from "./components/ScanBar";
 import TaskList from "./components/TaskList";
-import { deleteTask, fetchTasks, scanInbox, updateTask } from "./api/taskApi";
+import LoginGate from "./components/LoginGate";
+import {
+  deleteTask,
+  fetchTasks,
+  getAuthToken,
+  logout,
+  scanInbox,
+  updateTask,
+} from "./api/tasksApi";
 import "./App.css";
 
 export default function App() {
+  const [authed, setAuthed] = useState(!!getAuthToken());
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
@@ -18,14 +27,15 @@ export default function App() {
       setError(null);
     } catch (err) {
       setError(err.message);
+      if (err.message.startsWith("401")) setAuthed(false);
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    load();
-  }, [load]);
+    if (authed) load();
+  }, [authed, load]);
 
   async function handleScan() {
     setScanning(true);
@@ -51,6 +61,10 @@ export default function App() {
     setTasks((prev) => prev.filter((t) => t.id !== id));
   }
 
+  if (!authed) {
+    return <LoginGate onSuccess={() => setAuthed(true)} />;
+  }
+
   return (
     <div className="page">
       <ScanBar
@@ -66,6 +80,15 @@ export default function App() {
           <TaskList tasks={tasks} onSave={handleSave} onDelete={handleDelete} />
         )}
       </main>
+      <button
+        className="logout-link"
+        onClick={() => {
+          logout();
+          setAuthed(false);
+        }}
+      >
+        Sign out
+      </button>
     </div>
   );
 }
