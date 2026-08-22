@@ -483,9 +483,9 @@ body {
   margin-top: 6px;
 }
 
-.logout-link {
+.signout-btn {
   position: fixed;
-  bottom: 16px;
+  top: 16px;
   right: 16px;
   background: transparent;
   border: none;
@@ -494,8 +494,9 @@ body {
   font-size: 12px;
   cursor: pointer;
   text-decoration: underline;
+  z-index: 10;
 }
 
-.logout-link:hover {
+.signout-btn:hover {
   color: var(--paper-text);
 }
