@@ -19,3 +19,8 @@ members = ["Agent"]
 
 [tool.uv.sources]
 agent = { workspace = true }
+
+[dependency-groups]
+dev = [
+    "pytest-django>=4.14.0",
+]

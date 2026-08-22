@@ -1,11 +1,18 @@
-"""Orchestrates the email -> task pipeline, persisting to the DB and using
-the KV-store memory layer (see services/kv_store.py) to avoid re-extracting
-tasks from emails belonging to a thread that's already been processed.
+"""Orchestrates the email -> task pipeline.
+
+Every Task created here is owned by the authenticated user who triggered
+the scan — ownership always comes from ``user`` (request.user upstream),
+never from anything client-supplied.
+
+The KV memory layer is keyed per (user, message) rather than per thread:
+keying by thread would mean a brand-new reply gets thrown away just
+because an earlier message in the same thread was already processed.
+Keying by user+message also means one user's scan can never reuse or
+expose tasks that belong to another user.
 """
 
 from __future__ import annotations
 
-import re
 from datetime import date, datetime
 from typing import Any, Dict, List, Optional
 
@@ -16,31 +23,24 @@ from BackEnd.emails.services import fetch_email_data
 from BackEnd.tasks.models import Task
 from BackEnd.tasks.services import kv_store
 
-_RE_SUBJECT_PREFIX = re.compile(r"^(re|fwd?):\s*", re.IGNORECASE)
 
+def _memory_key(user_id: int, message: Dict[str, Any]) -> str:
+    """Per-user, per-message memory key.
 
-def _thread_key(message: Dict[str, Any]) -> str:
-    """Best-effort identifier for the email thread this message belongs to.
-
-    Prefers the thread's root message id from References (the first entry
-    is the original message per RFC 5322), then In-Reply-To, then falls
-    back to this message's own Message-ID, then a normalized subject as a
-    last resort for mail clients that omit threading headers entirely.
+    Deliberately NOT the thread root — that was the bug: keying by thread
+    meant one processed message marked the whole thread as done, so a
+    genuinely new reply in that thread was skipped and its tasks were
+    never created.
     """
-    references = (message.get("references") or "").split()
-    if references:
-        return references[0].strip()
-
-    in_reply_to = (message.get("in_reply_to") or "").strip()
-    if in_reply_to:
-        return in_reply_to
-
     message_id = (message.get("message_id") or "").strip()
     if message_id:
-        return message_id
+        return f"{user_id}:{message_id}"
 
+    # Rare fallback for mail with no Message-ID header at all — still
+    # scoped to this user, just less precise than a real message id.
     subject = (message.get("subject") or "").strip().lower()
-    return _RE_SUBJECT_PREFIX.sub("", subject)
+    date_hdr = (message.get("date") or "").strip()
+    return f"{user_id}:{subject}|{date_hdr}"
 
 
 def _parse_due_date(value: Any) -> Optional[date]:
@@ -53,17 +53,21 @@ def _parse_due_date(value: Any) -> Optional[date]:
         return None
 
 
-def run_extraction(limit: int = 10) -> Dict[str, Any]:
-    """Fetch recent emails, extract tasks from each (skipping known
-    threads via the KV memory), and save everything to the DB.
+def run_extraction(user, limit: int = 10) -> Dict[str, Any]:
+    """Fetch recent emails and extract tasks from each new message.
+
+    Args:
+        user: the authenticated Django user making this request. Every
+            Task row created is owned by this user; never pass anything
+            derived from client input here.
+        limit: how many recent emails to check.
 
     Returns:
         {
           "messages_fetched": int,
           "results": [
               {"email_id": int, "subject": str, "from": str, "date": str,
-               "thread_key": str, "from_memory": bool,
-               "tasks": [{"id": int, "title": str, ...}, ...]},
+               "from_memory": bool, "tasks": [{"id": int, ...}, ...]},
               ...
           ],
           "total_tasks": int,
@@ -77,7 +81,7 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
     for message in messages:
         subject = message.get("subject", "(no subject)")
         body = message.get("body", "")
-        thread_key = _thread_key(message)
+        memory_key = _memory_key(user.id, message)
 
         email_record = FetchedEmail.objects.create(
             message_id=message.get("message_id") or None,
@@ -89,11 +93,14 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
             body=body,
         )
 
-        memory_entry = kv_store.get(thread_key)
+        memory_entry = kv_store.get(memory_key)
 
         if memory_entry is not None:
-            # Already processed this thread on a previous scan — reuse the
-            # tasks we already created instead of asking the LLM again.
+            # This exact message, for this exact user, was already
+            # processed on a previous scan — reuse its tasks rather than
+            # asking the LLM again. A *different* message in the same
+            # thread, or the same message for a different user, will
+            # have a different key and will NOT hit this branch.
             known_task_ids = memory_entry.get("task_ids", [])
             saved_tasks = [
                 {
@@ -104,7 +111,7 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
                     "priority": t.priority,
                     "confidence": t.confidence,
                 }
-                for t in Task.objects.filter(id__in=known_task_ids)
+                for t in Task.objects.filter(id__in=known_task_ids, owner=user)
             ]
             results.append(
                 {
@@ -112,7 +119,6 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
                     "subject": subject,
                     "from": message.get("from", ""),
                     "date": message.get("date", ""),
-                    "thread_key": thread_key,
                     "from_memory": True,
                     "tasks": saved_tasks,
                 }
@@ -130,6 +136,7 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
         saved_tasks: List[Dict[str, Any]] = []
         for task in tasks:
             task_obj = Task.objects.create(
+                owner=user,
                 title=str(task.get("title", ""))[:255],
                 description=task.get("description", "") or "",
                 due_date=_parse_due_date(task.get("due_date")),
@@ -148,10 +155,10 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
             )
 
         kv_store.set(
-            thread_key,
+            memory_key,
             {
                 "task_ids": [t["id"] for t in saved_tasks],
-                "last_message_id": message.get("message_id", ""),
+                "message_id": message.get("message_id", ""),
             },
         )
 
@@ -161,7 +168,6 @@ def run_extraction(limit: int = 10) -> Dict[str, Any]:
                 "subject": subject,
                 "from": message.get("from", ""),
                 "date": message.get("date", ""),
-                "thread_key": thread_key,
                 "from_memory": False,
                 "tasks": saved_tasks,
             }

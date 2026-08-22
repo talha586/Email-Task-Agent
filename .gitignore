@@ -70,3 +70,33 @@ direnv/
 
 #Confidentials Data
 Agent/src/agent/confidentials.yml
+
+
+# --- Environment / secrets ---
+.env
+Agent/Config/.env
+confidentials.yml
+
+# --- Database ---
+db.sqlite3
+*.sqlite3
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+venv/
+.venv/
+Agent/.venv/
+
+# --- Frontend (Vite/React) ---
+FrontEnd/node_modules/
+FrontEnd/dist/
+FrontEnd/.env
+
+# --- Editor / OS ---
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

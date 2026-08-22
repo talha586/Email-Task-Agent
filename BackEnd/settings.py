@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework.authtoken',
     'corsheaders',
     'BackEnd.emails',
     'BackEnd.tasks',
@@ -149,3 +150,23 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 ]
+
+CORS_ALLOW_CREDENTIALS = True
+
+
+# --- API authentication ------------------------------------------------
+# IsAuthenticated is the DEFAULT for every DRF view in this project — no
+# view is open unless it explicitly opts out. Token auth is used (rather
+# than session/cookie auth) since the frontend is a separate SPA calling
+# the API cross-origin; this avoids needing CSRF token plumbing for a
+# decoupled client.
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.TokenAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+}

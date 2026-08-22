@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 
 
@@ -8,6 +9,17 @@ class Task(models.Model):
         LOW = "low", "Low"
         MEDIUM = "medium", "Medium"
         HIGH = "high", "High"
+
+    # Set ONLY from request.user in the view/service layer — never from
+    # client-supplied data. null=True because rows created before this
+    # field existed have no owner; every new row always sets it.
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="tasks",
+        null=True,
+        blank=True,
+    )
 
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True)
@@ -26,11 +38,11 @@ class Task(models.Model):
 class ThreadMemory(models.Model):
     """Generic persistent key-value store — the Agent's memory layer.
 
-    Not tied to Task/FetchedEmail via FK on purpose (keeps it a genuine
-    KV store rather than a relational join table). ``key`` is normally an
-    email thread's root identifier (see extraction.py's ``_thread_key``);
-    ``value`` is a small JSON blob describing what's already been done for
-    that key, e.g. {"task_ids": [1, 2], "last_message_id": "<...>"}.
+    ``key`` is per (user, message) — see extraction.py's ``_memory_key`` —
+    deliberately NOT per email thread. A thread-level key would mean a
+    brand-new reply gets skipped just because some earlier message in the
+    same thread was already processed; keying per message means every
+    individual email is still evaluated on its own.
     """
 
     key = models.CharField(max_length=255, unique=True)
