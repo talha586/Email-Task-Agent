@@ -500,3 +500,120 @@ body {
 .signout-btn:hover {
   color: var(--paper-text);
 }
+
+/* ---- Name finder bar (bottom-right message bar) ---- */
+
+.name-finder {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  width: min(320px, calc(100vw - 40px));
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 20;
+}
+
+.name-finder__bar {
+  display: flex;
+  gap: 6px;
+  background: var(--paper);
+  border-radius: 999px;
+  padding: 6px 6px 6px 16px;
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  border-top: none;
+}
+
+.name-finder__input {
+  flex: 1;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--ink-text);
+  outline: none;
+}
+
+.name-finder__input::placeholder {
+  color: #9c9080;
+}
+
+.name-finder__send {
+  font-family: var(--font-display);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--postal-red);
+  color: var(--paper);
+  border: none;
+  border-radius: 999px;
+  padding: 8px 16px;
+  cursor: pointer;
+}
+
+.name-finder__send:hover:not(:disabled) {
+  background: #8a2a23;
+}
+
+.name-finder__send:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.name-finder__result {
+  background: var(--paper);
+  color: var(--ink-text);
+  border-radius: 8px;
+  padding: 14px 16px;
+  border-top: 3px dashed var(--kraft);
+  box-shadow: 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+  animation: settle 0.25s ease both;
+}
+
+.name-finder__found-label {
+  margin: 0 0 6px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--sort-green);
+}
+
+.name-finder__task-title {
+  margin: 0 0 4px;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.name-finder__task-desc {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: #4a4030;
+}
+
+.name-finder__task-meta {
+  margin: 0;
+  display: flex;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #8a7f68;
+  text-transform: uppercase;
+}
+
+.name-finder__empty,
+.name-finder__error {
+  margin: 0;
+  font-size: 13px;
+  color: #6b5f4a;
+}
+
+.name-finder__error {
+  color: var(--postal-red);
+}
+
+@media (max-width: 560px) {
+  .name-finder {
+    left: 20px;
+    right: 20px;
+    width: auto;
+  }
+}

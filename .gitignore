@@ -1,81 +1,9 @@
-# Python
-__pycache__/
-*.py[cod]
-*.pyo
-*.pyd
-*.pyc
-*.pyo
-*.pyd
-*.pyc
-*.pym
-python-env/
-venv/
-ENV/
-.env
-.env.*
-
-# Django
-BackEnd/**/*.sqlite3
-BackEnd/**/migrations/*.py[cod]
-BackEnd/**/__pycache__/
-BackEnd/**/local_settings.py
-BackEnd/db.sqlite3
-
-# Node / Frontend
-FrontEnd/node_modules/
-FrontEnd/dist/
-FrontEnd/build/
-FrontEnd/.vite/
-FrontEnd/*.local
-FrontEnd/.env
-FrontEnd/.env.*
-
-# General
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-coverage/
-*.cover
-coverage.*
-*.cache
-*.tmp
-*.temp
-
-direnv/
-
-# macOS
-*.DS_Store
-
-# Git
-*.orig
-
-# Editor directories and files
-*.sublime-workspace
-*.sublime-project
-
-# Byte-compiled / C extensions
-*.so
-
-# Temporary files
-*.swp
-*.swo
-*.tmp
-*.bak
-
-#Confidentials Data
-Agent/src/agent/confidentials.yml
-
-
 # --- Environment / secrets ---
 .env
+.env.*
 Agent/Config/.env
 confidentials.yml
+Agent/src/agent/confidentials.yml
 
 # --- Database ---
 db.sqlite3
@@ -88,15 +16,48 @@ __pycache__/
 .pytest_cache/
 venv/
 .venv/
+ENV/
+python-env/
 Agent/.venv/
+
+# --- Django migrations (compiled files only — real .py migrations stay tracked) ---
+BackEnd/**/migrations/__pycache__/
+BackEnd/**/migrations/*.py[cod]
+BackEnd/**/local_settings.py
 
 # --- Frontend (Vite/React) ---
 FrontEnd/node_modules/
 FrontEnd/dist/
+FrontEnd/build/
+FrontEnd/.vite/
 FrontEnd/.env
+FrontEnd/.env.*
+FrontEnd/*.local
 
 # --- Editor / OS ---
 .vscode/
 .idea/
 .DS_Store
 Thumbs.db
+*.sublime-workspace
+*.sublime-project
+*.swp
+*.swo
+*.bak
+*.orig
+
+# --- Logs / coverage / caches ---
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+coverage/
+*.cover
+coverage.*
+*.cache
+*.tmp
+*.temp
+
+# --- If you ever run collectstatic ---
+staticfiles/

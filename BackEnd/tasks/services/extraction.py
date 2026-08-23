@@ -53,7 +53,7 @@ def _parse_due_date(value: Any) -> Optional[date]:
         return None
 
 
-def run_extraction(user, limit: int = 10) -> Dict[str, Any]:
+def run_extraction(user, limit: int = 10, sender_filter: str | None = None) -> Dict[str, Any]:
     """Fetch recent emails and extract tasks from each new message.
 
     Args:
@@ -61,6 +61,9 @@ def run_extraction(user, limit: int = 10) -> Dict[str, Any]:
             Task row created is owned by this user; never pass anything
             derived from client input here.
         limit: how many recent emails to check.
+        sender_filter: if given, only fetches mail FROM this sender —
+            used to scope a live check to one person (e.g. the message-bar
+            name lookup) instead of the whole inbox.
 
     Returns:
         {
@@ -73,7 +76,7 @@ def run_extraction(user, limit: int = 10) -> Dict[str, Any]:
           "total_tasks": int,
         }
     """
-    messages = fetch_email_data(limit=limit)
+    messages = fetch_email_data(limit=limit, sender_filter=sender_filter)
 
     results: List[Dict[str, Any]] = []
     total_tasks = 0
@@ -142,6 +145,7 @@ def run_extraction(user, limit: int = 10) -> Dict[str, Any]:
                 due_date=_parse_due_date(task.get("due_date")),
                 priority=task.get("priority") or None,
                 confidence=task.get("confidence"),
+                sender=message.get("from", "") or None,
             )
             saved_tasks.append(
                 {

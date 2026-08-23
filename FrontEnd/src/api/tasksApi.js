@@ -82,3 +82,10 @@ export function updateTask(id, data) {
 export function deleteTask(id) {
   return request(`/api/tasks/${id}/`, { method: "DELETE" });
 }
+
+export function findTaskByMessage(message) {
+  return request("/api/tasks/by-message/", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });
+}

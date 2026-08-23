@@ -25,8 +25,17 @@ from .email_parser import parse_message
 DEFAULT_FETCH_LIMIT = 10
 
 
-def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
+def fetch_email_data(
+    limit: int = DEFAULT_FETCH_LIMIT, sender_filter: str | None = None
+) -> List[Dict[str, Any]]:
     """Log into Gmail via IMAP and return the most recent matching messages.
+
+    Args:
+        limit: how many recent matching messages to return.
+        sender_filter: if given, searches "FROM" this sender instead of the
+            settings.TASK_SENDER_FILTER default. Passing None (the default)
+            preserves existing behavior — the settings value, or ALL if
+            that's also empty.
 
     Returns a list of {"message_id", "in_reply_to", "references", "subject",
     "from", "date", "body"} dicts. Returns an empty list (rather than
@@ -35,7 +44,7 @@ def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
     """
     username = getattr(settings, "GMAIL_USER", None)
     password = getattr(settings, "GMAIL_APP_PASSWORD", None)
-    sender_filter = getattr(settings, "TASK_SENDER_FILTER", "") or None
+    effective_sender_filter = sender_filter or (getattr(settings, "TASK_SENDER_FILTER", "") or None)
 
     if not username or not password:
         raise ValueError("GMAIL_USER / GMAIL_APP_PASSWORD are not configured in settings")
@@ -47,8 +56,8 @@ def fetch_email_data(limit: int = DEFAULT_FETCH_LIMIT) -> List[Dict[str, Any]]:
         mail.login(username, password)
         mail.select("INBOX")
 
-        if sender_filter:
-            typ, data = mail.search(None, "FROM", sender_filter)
+        if effective_sender_filter:
+            typ, data = mail.search(None, "FROM", effective_sender_filter)
         else:
             typ, data = mail.search(None, "ALL")
 

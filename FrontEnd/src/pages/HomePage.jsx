@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import ScanBar from "../components/ScanBar";
 import TaskList from "../components/TaskList";
+import NameFinderBar from "../components/NameFinderBar";
 import {
   deleteTask,
   fetchTasks,
@@ -85,8 +86,7 @@ export default function HomePage() {
           <TaskList tasks={tasks} onSave={handleSave} onDelete={handleDelete} />
         )}
       </main>
-      {/* Bottom-right corner intentionally left free — the NL "find latest
-          mail from a name" message bar goes here next. */}
+      <NameFinderBar />
     </div>
   );
 }

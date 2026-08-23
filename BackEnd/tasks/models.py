@@ -26,6 +26,10 @@ class Task(models.Model):
     due_date = models.DateField(null=True, blank=True)
     priority = models.CharField(max_length=10, choices=Priority.choices, null=True, blank=True)
     confidence = models.FloatField(null=True, blank=True)
+    # Raw "From" header of the source email, copied at creation time so
+    # "find the latest task from X" can be a plain DB filter — no FK to
+    # FetchedEmail, just a denormalized string.
+    sender = models.CharField(max_length=255, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

@@ -4,7 +4,21 @@ from rest_framework.response import Response
 
 from .models import Task
 from .serializers import TaskSerializer
-from .services import run_extraction
+from .services import find_latest_task_by_name, run_extraction
+
+
+@api_view(["POST"])
+def find_task_by_message_view(request):
+    """POST /api/tasks/by-message/ — {"message": "..."} -> the latest task
+    from the person named in that message, if any.
+
+    The Agent extracts the name (genuinely ambiguous, needs reasoning);
+    the actual task lookup is a plain owner-scoped DB filter once the
+    name is known.
+    """
+    message = request.data.get("message", "")
+    result = find_latest_task_by_name(request.user, message)
+    return Response(result)
 
 
 @api_view(["GET"])

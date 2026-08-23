@@ -5,9 +5,9 @@ from .models import Task, ThreadMemory
 
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
-    list_display = ("title", "owner", "priority", "due_date", "confidence", "created_at")
+    list_display = ("title", "owner", "sender", "priority", "due_date", "confidence", "created_at")
     list_filter = ("priority", "owner")
-    search_fields = ("title", "description")
+    search_fields = ("title", "description", "sender")
 
 
 @admin.register(ThreadMemory)
