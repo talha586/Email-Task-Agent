@@ -1,6 +1,6 @@
 """Agent runner: orchestrates model calls and tool usage for task extraction."""
 
-from __future__ import annotations          #-> Helps in type hinting
+from __future__ import annotations
 
 import json
 import re
@@ -32,7 +32,6 @@ If there are no action items, return {"tasks": []}.
 
 
 def _parse_tasks_json(raw: str) -> list[ExtractedTask]:
-    """Best-effort parse of LLM JSON output."""
     text = raw.strip()
     fence_match = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence_match:
@@ -58,21 +57,27 @@ def _parse_tasks_json(raw: str) -> list[ExtractedTask]:
         title = str(item.get("title", "")).strip()
         if not title:
             continue
+
+        raw_confidence = item.get("confidence", 0.5)
+        try:
+            confidence = float(raw_confidence)
+        except (TypeError, ValueError):
+            confidence = 0.5
+        confidence = max(0.0, min(1.0, confidence))
+
         normalized.append(
             ExtractedTask(
                 title=title,
                 description=str(item.get("description", "")).strip(),
                 due_date=item.get("due_date"),
                 priority=item.get("priority"),
-                # confidence=float(item.get("confidence", 0.5)),
+                confidence=confidence,
             )
         )
     return normalized
 
 
 class AgentRunner:
-    """Runs the extract-tasks pipeline using a model client and optional tools."""
-
     def __init__(self, model_client: ModelClient, tool_registry: ToolRegistry | None = None) -> None:
         self._model = model_client
         self._tools = tool_registry or ToolRegistry()
@@ -82,7 +87,6 @@ class AgentRunner:
         return self._tools
 
     def extract_tasks(self, text: str) -> list[ExtractedTask]:
-        """Extract action items from email text via the registered model client."""
         if not text or not text.strip():
             return []
 

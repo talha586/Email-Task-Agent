@@ -52,7 +52,15 @@ def find_latest_task_by_name(user, message: str) -> Dict[str, Any]:
     Always scoped to ``user`` — never trusts anything else for whose
     tasks/inbox to search.
     """
-    name = extract_person_name(message)
+    try:
+        name = extract_person_name(message)
+    except Exception as exc:
+        print(f"Name extraction failed: {exc}")
+        return {
+            "name": None,
+            "task": None,
+            "message": "Sorry, I couldn't process that message right now. Please try again.",
+        }
 
     if not name:
         return {

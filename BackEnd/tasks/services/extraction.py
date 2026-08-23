@@ -44,13 +44,46 @@ def _memory_key(user_id: int, message: Dict[str, Any]) -> str:
 
 
 def _parse_due_date(value: Any) -> Optional[date]:
-    """Best-effort parse of the Agent's 'YYYY-MM-DD' due_date string."""
+    """Best-effort parse of the Agent's 'YYYY-MM-DD' due_date string.
+
+    Returns None (rather than raising) on anything that isn't a real
+    date — a hallucinated or malformed value degrades to "no due date"
+    instead of crashing the whole extraction.
+    """
     if not value:
         return None
     try:
         return datetime.strptime(str(value), "%Y-%m-%d").date()
     except (TypeError, ValueError):
         return None
+
+
+_VALID_PRIORITIES = {"low", "medium", "high"}
+
+
+def _validate_priority(value: Any) -> Optional[str]:
+    """Only accept the exact values the Task model's choices allow.
+
+    Django's CharField(choices=...) does NOT reject an invalid value on
+    .objects.create() unless full_clean() is called — nothing currently
+    calls it, so without this check a hallucinated priority string would
+    silently save to the database untouched.
+    """
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    return normalized if normalized in _VALID_PRIORITIES else None
+
+
+def _validate_confidence(value: Any) -> Optional[float]:
+    """Coerce to float and clamp to [0.0, 1.0]; None on anything unusable."""
+    if value is None:
+        return None
+    try:
+        confidence = float(value)
+    except (TypeError, ValueError):
+        return None
+    return max(0.0, min(1.0, confidence))
 
 
 def run_extraction(user, limit: int = 10, sender_filter: str | None = None) -> Dict[str, Any]:
@@ -143,8 +176,8 @@ def run_extraction(user, limit: int = 10, sender_filter: str | None = None) -> D
                 title=str(task.get("title", ""))[:255],
                 description=task.get("description", "") or "",
                 due_date=_parse_due_date(task.get("due_date")),
-                priority=task.get("priority") or None,
-                confidence=task.get("confidence"),
+                priority=_validate_priority(task.get("priority")),
+                confidence=_validate_confidence(task.get("confidence")),
                 sender=message.get("from", "") or None,
             )
             saved_tasks.append(
