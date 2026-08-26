@@ -1,0 +1,24 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      # Bind-mount real secrets in — never copied into the image itself.
+      - ./.env:/app/.env:ro
+      - ./Agent/Config/.env:/app/Agent/Config/.env:ro
+      # Persist the SQLite database on the host so data survives rebuilds.
+      - ./db.sqlite3:/app/db.sqlite3
+
+  frontend:
+    build:
+      context: ./FrontEnd
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:8000
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend

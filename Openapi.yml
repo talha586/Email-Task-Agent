@@ -1,0 +1,408 @@
+openapi: 3.0.3
+info:
+  title: Email-to-Task Agent API
+  description: |
+    HTTP API for the Email-to-Task Agent backend (Django + Django REST
+    Framework). The API lets an authenticated user scan their Gmail inbox,
+    have an LLM extract action items from the emails, and manage the
+    resulting task list.
+
+    **Auth model:** every endpoint except `/api-token-auth/` requires a
+    DRF auth token. All task data is scoped to `request.user` — there is
+    no way to read or write another user's tasks through this API.
+  version: "1.0.0"
+  contact:
+    name: Muhammad Talha
+
+servers:
+  - url: http://127.0.0.1:8000
+    description: Local development server (Django runserver)
+
+tags:
+  - name: Auth
+    description: Token-based authentication
+  - name: Tasks
+    description: CRUD over extracted tasks
+  - name: Agent
+    description: Endpoints that trigger the AI extraction pipeline
+
+security:
+  - tokenAuth: []
+
+paths:
+  /api-token-auth/:
+    post:
+      tags: [Auth]
+      summary: Obtain an auth token
+      description: |
+        Standard DRF `obtain_auth_token` view. Exchange a username/password
+        for a token to use as `Authorization: Token <token>` on every
+        subsequent request.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        "200":
+          description: Authenticated — token issued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  token:
+                    type: string
+                    example: 9944b09199c62bcf9418ad846dd0e4bbdfc6ee4
+        "400":
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorDetail"
+
+  /api/tasks/:
+    get:
+      tags: [Tasks]
+      summary: List my tasks
+      description: Returns only tasks owned by the authenticated user, newest first.
+      responses:
+        "200":
+          description: A list of tasks
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /api/tasks/{id}/:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema:
+          type: integer
+        description: Task ID
+    get:
+      tags: [Tasks]
+      summary: Retrieve a task
+      description: 404s (not 403) if the task exists but belongs to another user — existence is never revealed.
+      responses:
+        "200":
+          description: The task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not found (either it doesn't exist, or it isn't yours)
+    put:
+      tags: [Tasks]
+      summary: Replace a task
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskWritable"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not found
+    patch:
+      tags: [Tasks]
+      summary: Partially update a task
+      description: |
+        Used by the frontend's inline task editor to update title,
+        description, due_date, and priority. `owner`, `id`, and
+        `created_at` are read-only and ignored if sent.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TaskWritable"
+      responses:
+        "200":
+          description: Updated task
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Task"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not found
+    delete:
+      tags: [Tasks]
+      summary: Delete a task
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Not found
+
+  /api/tasks/extract/:
+    get:
+      tags: [Agent]
+      summary: Scan inbox and extract tasks
+      description: |
+        Fetches recent emails over IMAP, cleans each body, and for every
+        message not already seen (per-user, per-message dedupe via the
+        `ThreadMemory` KV store) sends the text to the LLM for extraction.
+        Every `Task` created is owned by the authenticated caller.
+
+        Messages already processed on a prior scan are returned from
+        memory (`from_memory: true`) instead of being re-sent to the LLM.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 10
+          description: How many recent inbox messages to check.
+      responses:
+        "200":
+          description: Extraction run summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ExtractionResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "500":
+          description: |
+            Unhandled server error, e.g. GMAIL_USER / GMAIL_APP_PASSWORD not
+            configured in the environment.
+
+  /api/tasks/by-message/:
+    post:
+      tags: [Agent]
+      summary: Find the latest task from a named person
+      description: |
+        Given a free-text message (e.g. "what did Sarah ask me to do?"),
+        the Agent extracts a person's name via the LLM, then looks up the
+        most recent task on file whose `sender` contains that name.
+
+        Lookup order:
+          1. Extract the name from `message` (LLM call).
+          2. Check the DB for an existing task from a sender matching that name.
+          3. On a miss, fall back to a live, sender-scoped IMAP fetch
+             (`limit=1`, same pipeline as `/api/tasks/extract/`) and check again.
+
+        Always scoped to the authenticated user.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:
+                  type: string
+                  example: what did Sarah ask me to do?
+      responses:
+        "200":
+          description: |
+            Always 200, even on a "not found" result — check the `task`
+            field (null) and `message` field for the outcome.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NameLookupResult"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+components:
+  securitySchemes:
+    tokenAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: 'DRF token auth. Send as: `Authorization: Token <token>`'
+
+  responses:
+    Unauthorized:
+      description: Missing or invalid auth token
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorDetail"
+
+  schemas:
+    ErrorDetail:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    Task:
+      type: object
+      description: |
+        Serialized via `TaskSerializer`. Note: the underlying `Task` model
+        also has a `sender` field (the source email's From header), but it
+        is **not** exposed by this serializer/endpoint — only the
+        `/api/tasks/by-message/` response includes `sender`.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        owner:
+          type: string
+          readOnly: true
+          description: Username of the owning user.
+        title:
+          type: string
+        description:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+          enum: [low, medium, high]
+        confidence:
+          type: number
+          format: float
+          nullable: true
+          minimum: 0
+          maximum: 1
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+
+    TaskWritable:
+      type: object
+      description: Fields a client may set on PATCH/PUT. All optional on PATCH.
+      properties:
+        title:
+          type: string
+        description:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+          enum: [low, medium, high]
+
+    ExtractedTaskSummary:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        description:
+          type: string
+        due_date:
+          type: string
+          format: date
+          nullable: true
+        priority:
+          type: string
+          nullable: true
+          enum: [low, medium, high]
+        confidence:
+          type: number
+          nullable: true
+
+    ExtractionResultItem:
+      type: object
+      properties:
+        email_id:
+          type: integer
+          description: Primary key of the stored FetchedEmail row.
+        subject:
+          type: string
+        from:
+          type: string
+        date:
+          type: string
+          description: Raw Date header as fetched (unparsed).
+        from_memory:
+          type: boolean
+          description: True if this message was already processed on a prior scan (tasks reused, not regenerated).
+        tasks:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtractedTaskSummary"
+
+    ExtractionResult:
+      type: object
+      properties:
+        messages_fetched:
+          type: integer
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/ExtractionResultItem"
+        total_tasks:
+          type: integer
+
+    NameLookupResult:
+      type: object
+      properties:
+        name:
+          type: string
+          nullable: true
+          description: Name the Agent extracted from the message, or null if none found.
+        task:
+          type: object
+          nullable: true
+          properties:
+            id:
+              type: integer
+            title:
+              type: string
+            description:
+              type: string
+            due_date:
+              type: string
+              format: date
+              nullable: true
+            priority:
+              type: string
+              nullable: true
+            confidence:
+              type: number
+              nullable: true
+            sender:
+              type: string
+              nullable: true
+            created_at:
+              type: string
+              format: date-time
+        message:
+          type: string
+          description: Human-readable status message shown by the frontend.

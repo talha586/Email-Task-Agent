@@ -1,0 +1,12 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.git/
+.env
+Agent/Config/.env
+Agent/.venv/
+db.sqlite3
+FrontEnd/
+*.log
